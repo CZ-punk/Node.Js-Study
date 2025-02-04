@@ -1,3 +1,6 @@
+CREATE DATABASE IF NOT EXISTS opentutorials;
+USE opentutorials;
+
 --
 -- Table structure for table `author`
 --

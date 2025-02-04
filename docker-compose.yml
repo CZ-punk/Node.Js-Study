@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   db:
+    container_name: mysql
     image: mysql:latest
     restart: always
     environment:
@@ -11,5 +12,19 @@ services:
       MYSQL_PASSWORD: 123456    
     ports:
       - "3306:3306"                        
+    volumes:
+      - ./example.sql:/docker-entrypoint-initdb.d/example.sql
+      # - ./mysql_data:/var/lib/mysql
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=1234
+      - MONGO_INITDB_DATABASE=my_mongodb
     # volumes:
-    #   - ./mysql_data:/var/lib/mysql
+    #   - mongo_data:/data/db 
