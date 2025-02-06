@@ -11,7 +11,14 @@ router.get('/login', (req, res) => {
 // })
 
 router.get('/logout', (req, res) => {
-    topic.logout(req, res);
+    // topic.logout(req, res);
+    req.logout((err) => {
+        if (err) {
+            return next(err);
+        }
+        res.redirect('/');
+    });
+
 })
 
 module.exports = router;

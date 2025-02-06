@@ -1,14 +1,21 @@
 require('dotenv').config();
 const express = require('express');
-
 const app = express();
+
+
 const compression = require('compression');
 const helmet = require('helmet');
+const session = require('express-session');
+const MongoDBStore = require('connect-mongodb-session')(session);
+const flash = require('connect-flash');
 const topicRouter = require('./routes/topic');
 const indexRouter = require('./routes/index');
 const authRouter = require('./routes/auth');
-const session = require('express-session');
-const MongoDBStore = require('connect-mongodb-session')(session);
+
+app.use(compression());
+app.use(helmet());
+app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
 
 const mongoURI = `mongodb://${process.env.LOCAL_MONGODB_USER}:${process.env.LOCAL_MONGODB_PWD}@${process.env.LOCAL_HOST}:${process.env.LOCAL_MONGODB_PORT}/${process.env.LOCAL_MONGODB_DB}?authSource=admin`;
 const sessionSecret = process.env.SESSION_SECRETKEY;
@@ -31,7 +38,7 @@ app.use(session({
         maxAge: sessionDuration // 1 hour
     }
 }));
-
+app.use(flash());
 
 var authData = {
     email: 'choi',
@@ -39,50 +46,75 @@ var authData = {
     nickname: 'monkey'
 }
 
-const passport = require("passport"),
-    LocalStrategy = require("passport-local").Strategy;
+var passport = require('passport'),
+    LocalStrategy = require('passport-local').Strategy;
+    
+app.use(passport.initialize());
+app.use(passport.session());
 
-passport.use(
-    new LocalStrategy(
-        { usernameField: "email", passwordField: "password" },
-        (username, password, done) => {
-            console.log('LocalStrategy ', username, password);
+passport.serializeUser(function(user, done) {
 
-            if (username != authData.email) {
-                console.log(1);
-                done(null, false, { message: "Incorrect email." });
-            } else if (password != authData.password) {
-                console.log(2);
-                done(null, false, { message: "Incorrect password." });
-            } else {
-                console.log(3);
-                done(null, authData);
-            }
+    console.log('serializeUser', user);
+    done(null, user.email);
+  });
+  
+passport.deserializeUser(function(id, done) {
+
+    console.log('deserializeUser', id);
+    done(null, authData);
+  });
+
+passport.use(new LocalStrategy(
+    {
+      usernameField: 'email',
+      passwordField: 'password'
+    },
+    function (username, password, done) {
+      console.log('LocalStrategy', username, password);
+
+        if (username != authData.email) {
+            console.log('wrong email')
+            return done(null, false, { message: 'Incorrect email.'}); 
+        } else if (password != authData.password) {
+            console.log('wrong password')
+            return done(null, false, { message: 'Incorrect password.'});
+        } else {
+            console.log('ok')
+            return done(null, authData);
         }
-    )
-);
+    }
+  ));
 
 app.post('/auth/login_process', passport.authenticate('local', {
     successRedirect: "/",
-    failureRedirect: "/auth/login"
+    failureRedirect: "/auth/login",
+    failureFlash: true
 }));
 
-store.on('error', function (error) {
-    console.log(error);
+app.get('/flash', (req, res) => {
 
-    console.log(process.env.LOCAL_HOST)
-});
+    req.flash('info', 'Flushed!');
+    res.send('flash');
+})
 
-app.use(compression());
-app.use(helmet());
-app.use(express.static('public'));
-app.use(express.urlencoded({ extended: true }));
+app.get('/flash-display', (req, res) => {
+    var fmsg = req.flash();
+    console.log(fmsg);
+    res.send(fmsg);
+    // res.render('index', { message: req.flash('info') });
+    
+})
+
 app.use('/', indexRouter);
 app.use('/topic', topicRouter);
 app.use('/auth', authRouter);
 
+store.on('error', function (error) {
+    console.log(error);
+    console.log(process.env.LOCAL_HOST)
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-
     console.log(`Server is running on port ${PORT}`);
 });
